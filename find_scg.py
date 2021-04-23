@@ -118,19 +118,40 @@ def extract_seq(faa, blast_out, faa_out):
 
 def find_scg(search_engine, faa, scg_faa, db, all_db, scg_lookup,
              output_dir, threads):
+    """Find single-copy gene
+    
+    Arguments:
+        faa (string): protein sequences predicted from metagenome-assembly-genome
+        scg_faa (string): single copy gene sequences provided by DAS_Tool 
+        db (string): a blast database build on faa
+        all_db (string): a blast database build on all_faa
+        scg_lookup (string): single copy gene lookup provided by DAS_Tool
+        output_dir (string): output directory, which store alignemnt results
+        threads (string): thread num used by aligner
+    """
     blast_out = os.path.join(
         output_dir, os.path.basename(faa) + ".findSCG.b6")
+
+    # step 1
+    # query: scg_faa
+    # db: faa
     run_blast(search_engine, scg_faa, db, blast_out, threads, True)
 
-    # extract proteins
+    # step 2
+    # extract proteins based on blast_out resulted from step 1
     scg_faa_ = os.path.join(
         output_dir, os.path.basename(faa) + ".scg.candiates.faa")
     extract_seq(faa, blast_out, scg_faa_)
 
+    # step 3
+    # query: candiated scg_faa
+    # db: all_faa
     # verify SCGs by blasting against all proteins of all genomes
+    #TODO may failed when scg_faa_ is empty
     blast_out = os.path.join(output_dir, os.path.basename(faa) + ".all.b6")
     run_blast(search_engine, scg_faa_, all_db, blast_out, threads, False)
 
+    # step 4
     # scg annotation
     scg_lookup_df = pd.read_csv(scg_lookup, sep='\t', names=[
                                 "scg_id", "scg_annotation"])\
@@ -188,6 +209,49 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
+
+    '''
+    ~|___(0.0) ll /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/
+    .rw-rw-r-- zhujie ST_META_SHR  64 MB Wed Jul 29 02:17:54 2020 arc.all.faa
+    .rw-rw-r-- zhujie ST_META_SHR 1.3 MB Wed Jul 29 02:17:54 2020 arc.scg.faa
+    .rw-rw-r-- zhujie ST_META_SHR 197 KB Wed Jul 29 02:17:54 2020 arc.scg.lookup
+    .rw-rw-r-- zhujie ST_META_SHR  15 MB Wed Jul 29 02:17:54 2020 bac.all.faa
+    .rw-rw-r-- zhujie ST_META_SHR 244 KB Wed Jul 29 02:17:54 2020 bac.scg.faa
+    .rw-rw-r-- zhujie ST_META_SHR  36 KB Wed Jul 29 02:17:54 2020 bac.scg.lookup
+
+    #
+    all_faa: arc.all.faa or bac.all.faa
+    scg_faa: arc.scg.faa or bac.scg.faa
+    lookup: arc.scg.lookup or bac.scg.lookup
+
+    #
+        │ File: /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/arc.scg.lookup
+    -───┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    1   │ 1001994.MY1_1599    Phenylalanyl-tRNA_synthetase_alpha_subunit
+    2   │ 1001994.MY1_1515    Dimethyladenosine_transferase
+    3   │ 1001994.MY1_0316    Ribosomal_protein_S7
+    4   │ 1001994.MY1_0275    Ribosomal_protein_S2
+    5   │ 1001994.MY1_1598    Phenylalanyl-tRNA_synthetase_beta_subunit
+    6   │ 1033806.HLRTI_19027 Methionyl-tRNA_synthetase
+    7   │ 1001994.MY1_0894    Ribosomal_protein_L3
+    8   │ 1001994.MY1_0285    Ribosomal_protein_S13
+    9   │ 1001994.MY1_0387    Ribosomal_protein_L13
+   10   │ 1001994.MY1_0386    Ribosomal_protein_S9
+   11   │ 1001994.MY1_1647    Non-canonical_purine_NTP_pyrophosphatase 
+
+    #
+    ~|___(0.0) wc -l /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/arc.scg.lookup
+    4358 /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/arc.scg.lookup
+    
+    ~|___(0.0) rg -c "^>" /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/arc.scg.faa
+    4358
+    
+    ~|___(0.0) wc -l /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/bac.scg.lookup
+    998 /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/bac.scg.lookup
+    
+    ~|___(0.0) rg -c "^>" /ldfssz1/ST_META/share/User/zhujie/.conda/envs/bioenv/share/das_tool-1.1.2-1/db/bac.scg.faa
+    998
+    '''
 
     # build db for faa and all_faa
     db = set_db_name(args.search_engine, args.faa, args.output_dir)
