@@ -131,6 +131,9 @@ def find_scg(search_engine, faa, scg_faa, db, all_db, scg_lookup,
     """
     blast_out = os.path.join(
         output_dir, os.path.basename(faa) + ".findSCG.b6")
+    if os.path.getsize(blast_out) == 0:
+        print("No single copy gene found")
+        return None
 
     # step 1
     # query: scg_faa
@@ -142,6 +145,9 @@ def find_scg(search_engine, faa, scg_faa, db, all_db, scg_lookup,
     scg_faa_ = os.path.join(
         output_dir, os.path.basename(faa) + ".scg.candiates.faa")
     extract_seq(faa, blast_out, scg_faa_)
+    if os.path.getsize(scg_faa_) == 0:
+        print("No single copy gene found")
+        return None
 
     # step 3
     # query: candiated scg_faa
@@ -150,6 +156,9 @@ def find_scg(search_engine, faa, scg_faa, db, all_db, scg_lookup,
     #TODO may failed when scg_faa_ is empty
     blast_out = os.path.join(output_dir, os.path.basename(faa) + ".all.b6")
     run_blast(search_engine, scg_faa_, all_db, blast_out, threads, False)
+    if os.path.getsize(blast_out) == 0:
+        print("No single copy gene found")
+        return None
 
     # step 4
     # scg annotation
@@ -175,6 +184,7 @@ def find_scg(search_engine, faa, scg_faa, db, all_db, scg_lookup,
         .merge(scg_lookup_df)
 
     if scg_df.empty:
+        print("No single copy gene found")
         return None
     else:
         scg = os.path.join(output_dir, os.path.basename(faa) + ".scg")
